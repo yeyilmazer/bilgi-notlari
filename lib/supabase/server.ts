@@ -20,10 +20,14 @@ export async function createClient() {
         },
         setAll(cookiesToSet: CookieToSet[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options as any);
-            });
-          } catch {}
+            cookiesToSet.forEach(
+              ({ name, value, options }: CookieToSet) => {
+                cookieStore.set(name, value, options as any);
+              }
+            );
+          } catch {
+            // Server component context içinde set başarısız olabilir
+          }
         },
       },
     }

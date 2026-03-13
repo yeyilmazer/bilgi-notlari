@@ -12,7 +12,9 @@ export async function loginAction(formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    throw new Error(error.message);
+  }
 
   redirect("/admin");
 }
@@ -45,11 +47,11 @@ export async function saveNoteAction(formData: FormData) {
   }>;
 
   if (!title || !contentHtml) {
-    return { ok: false, message: "Başlık ve içerik zorunludur." };
+    throw new Error("Başlık ve içerik zorunludur.");
   }
 
   if (!categories.length) {
-    return { ok: false, message: "En az bir kategori seçmelisin." };
+    throw new Error("En az bir kategori seçmelisin.");
   }
 
   const slug = slugify(title);
@@ -70,7 +72,7 @@ export async function saveNoteAction(formData: FormData) {
       })
       .eq("id", id);
 
-    if (error) return { ok: false, message: error.message };
+    if (error) throw new Error(error.message);
   } else {
     const { data, error } = await admin
       .from("notes")
@@ -86,7 +88,10 @@ export async function saveNoteAction(formData: FormData) {
       .select("id")
       .single();
 
-    if (error || !data) return { ok: false, message: error?.message ?? "Not kaydedilemedi." };
+    if (error || !data) {
+      throw new Error(error?.message ?? "Not kaydedilemedi.");
+    }
+
     noteId = data.id;
   }
 
@@ -95,21 +100,27 @@ export async function saveNoteAction(formData: FormData) {
   await admin.from("footnotes").delete().eq("note_id", noteId);
 
   if (categories.length) {
-    await admin.from("note_categories").insert(categories.map((categoryId) => ({
-      note_id: noteId,
-      category_id: categoryId
-    })));
+    const { error } = await admin.from("note_categories").insert(
+      categories.map((categoryId) => ({
+        note_id: noteId,
+        category_id: categoryId
+      }))
+    );
+    if (error) throw new Error(error.message);
   }
 
   if (tags.length) {
-    await admin.from("note_tags").insert(tags.map((tagId) => ({
-      note_id: noteId,
-      tag_id: tagId
-    })));
+    const { error } = await admin.from("note_tags").insert(
+      tags.map((tagId) => ({
+        note_id: noteId,
+        tag_id: tagId
+      }))
+    );
+    if (error) throw new Error(error.message);
   }
 
   if (footnotes.length) {
-    await admin.from("footnotes").insert(
+    const { error } = await admin.from("footnotes").insert(
       footnotes.map((footnote, index) => ({
         note_id: noteId,
         sort_order: index + 1,
@@ -121,13 +132,12 @@ export async function saveNoteAction(formData: FormData) {
         note_text: footnote.note_text ?? null
       }))
     );
+    if (error) throw new Error(error.message);
   }
 
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath(`/not/${slug}`);
-
-  return { ok: true, message: status === "published" ? "Not başarıyla yayımlandı." : "Taslak başarıyla kaydedildi." };
 }
 
 export async function saveCategoryAction(formData: FormData) {
@@ -135,21 +145,20 @@ export async function saveCategoryAction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
 
-  if (!name) return { ok: false, message: "Kategori adı zorunludur." };
+  if (!name) return;
 
   const payload = { name, slug: slugify(name) };
 
   if (id) {
     const { error } = await admin.from("categories").update(payload).eq("id", id);
-    if (error) return { ok: false, message: error.message };
+    if (error) throw new Error(error.message);
   } else {
     const { error } = await admin.from("categories").insert(payload);
-    if (error) return { ok: false, message: error.message };
+    if (error) throw new Error(error.message);
   }
 
   revalidatePath("/");
   revalidatePath("/admin");
-  return { ok: true, message: "Kategori kaydedildi." };
 }
 
 export async function saveTagAction(formData: FormData) {
@@ -157,47 +166,48 @@ export async function saveTagAction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
 
-  if (!name) return { ok: false, message: "Etiket adı zorunludur." };
+  if (!name) return;
 
   const payload = { name, slug: slugify(name) };
 
   if (id) {
     const { error } = await admin.from("tags").update(payload).eq("id", id);
-    if (error) return { ok: false, message: error.message };
+    if (error) throw new Error(error.message);
   } else {
     const { error } = await admin.from("tags").insert(payload);
-    if (error) return { ok: false, message: error.message };
+    if (error) throw new Error(error.message);
   }
 
   revalidatePath("/");
   revalidatePath("/admin");
-  return { ok: true, message: "Etiket kaydedildi." };
 }
 
 export async function deleteCategoryAction(formData: FormData) {
   const admin = createAdminClient();
   const id = String(formData.get("id") ?? "").trim();
-  if (!id) return { ok: false, message: "Kategori bulunamadı." };
+
+  if (!id) return;
 
   await admin.from("note_categories").delete().eq("category_id", id);
+
   const { error } = await admin.from("categories").delete().eq("id", id);
-  if (error) return { ok: false, message: error.message };
+  if (error) throw new Error(error.message);
 
   revalidatePath("/");
   revalidatePath("/admin");
-  return { ok: true, message: "Kategori silindi." };
 }
 
 export async function deleteTagAction(formData: FormData) {
   const admin = createAdminClient();
   const id = String(formData.get("id") ?? "").trim();
-  if (!id) return { ok: false, message: "Etiket bulunamadı." };
+
+  if (!id) return;
 
   await admin.from("note_tags").delete().eq("tag_id", id);
+
   const { error } = await admin.from("tags").delete().eq("id", id);
-  if (error) return { ok: false, message: error.message };
+  if (error) throw new Error(error.message);
 
   revalidatePath("/");
   revalidatePath("/admin");
-  return { ok: true, message: "Etiket silindi." };
 }

@@ -79,7 +79,10 @@ export function AdminNoteForm({
     formData.set("categories_json", JSON.stringify(selectedCategories));
     formData.set("tags_json", JSON.stringify(selectedTags));
     formData.set("footnotes_json", JSON.stringify(orderedFootnotes));
-    if (isFavorite) formData.set("is_favorite", "on");
+
+    if (isFavorite) {
+      formData.set("is_favorite", "on");
+    }
 
     try {
       await saveNoteAction(formData);
@@ -113,9 +116,10 @@ export function AdminNoteForm({
   function addFootnote() {
     const hasUsefulBook =
       footnoteDraft.mode === "book" &&
-      (footnoteDraft.book || footnoteDraft.note_text);
+      Boolean(footnoteDraft.book || footnoteDraft.note_text);
+
     const hasUsefulText =
-      footnoteDraft.mode === "text" && footnoteDraft.note_text;
+      footnoteDraft.mode === "text" && Boolean(footnoteDraft.note_text);
 
     if (!hasUsefulBook && !hasUsefulText) return;
 
@@ -131,11 +135,14 @@ export function AdminNoteForm({
   }
 
   function removeFootnote(index: number) {
+    const footnoteNumber = index + 1;
+
     setFootnotes((prev) => prev.filter((_, i) => i !== index));
+
     setContentHtml((prev) =>
       prev.replace(
         new RegExp(
-          `<a href="#footnote-${index + 1}" id="footnote-ref-${index + 1}"><sup>\$begin:math:display$\$\{index \+ 1\}\\$end:math:display$<\\/sup><\\/a>`,
+          `<a href="#footnote-${footnoteNumber}" id="footnote-ref-${footnoteNumber}"><sup>\$begin:math:display$\$\{footnoteNumber\}\\$end:math:display$</sup></a>`,
           "g"
         ),
         ""

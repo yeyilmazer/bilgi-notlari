@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+// Kurabiye (Cookie) tipini daha sağlam tanımlıyoruz
 type CookieToSet = {
   name: string;
   value: string;
-  options?: Record<string, unknown>;
+  options?: any; // Next.js cookie seçenekleri ile uyumluluk için any kullanmak en güvenlisi
 };
 
 export async function createClient() {
@@ -18,15 +19,15 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
+        // Hata veren kısım burasıydı, tipi açıkça belirttik
         setAll(cookiesToSet: CookieToSet[]) {
           try {
-            cookiesToSet.forEach(
-              ({ name, value, options }: CookieToSet) => {
-                cookieStore.set(name, value, options as any);
-              }
-            );
-          } catch {
-            // Server component context içinde set başarısız olabilir
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch (error) {
+            // Server Component'lerde kurabiye set etmek bazen kısıtlıdır, 
+            // middleware bu durumu genelde çözer.
           }
         },
       },
